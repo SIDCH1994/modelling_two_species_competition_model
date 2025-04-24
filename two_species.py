@@ -113,3 +113,21 @@ plt.tight_layout()
 plt.savefig("model_fit_comparison.png")
 plt.show()
 
+
+# Step 4: Goodness-of-fit: RMSE Function, Print RMSE for Both Fits
+
+def compute_rmse(params, t_data, x_data, y_data):
+    sol = solve_ivp(lotka_volterra, (t_data[0], t_data[-1]), [x_data[0], y_data[0]],
+                    args=tuple(params), t_eval=t_data)
+    if not sol.success:
+        return np.nan
+    x_pred, y_pred = sol.y
+    rmse_x = np.sqrt(np.mean((x_data - x_pred)**2))
+    rmse_y = np.sqrt(np.mean((y_data - y_pred)**2))
+    return rmse_x, rmse_y
+
+rmse_local = compute_rmse(result_local.x, t_data, x_data, y_data)
+rmse_global = compute_rmse(result_global.x, t_data, x_data, y_data)
+
+print("\nRMSE (L-BFGS-B): Species 1 = {:.2f}, Species 2 = {:.2f}".format(*rmse_local))
+print("RMSE (Differential Evolution): Species 1 = {:.2f}, Species 2 = {:.2f}".format(*rmse_global))
