@@ -57,7 +57,7 @@ plt.show()
 
 
 # -----------------------------------------------------------------------
-# Phase-2: Model fitting and optimization
+# Phase-2: Model fitting and model evaluation functions
 # -----------------------------------------------------------------------
 # Step-1: Define the Lotka-Volterra equations
 # Step-2: Define the loss function for optimization
@@ -188,7 +188,7 @@ plt.ylabel("Population Volume")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("model_fit_comparison.png")
+plt.savefig("lotka_volterra_diffrential_equations_optimization_solution.png")
 plt.show()
 
 
@@ -212,6 +212,103 @@ print("MAE (Differential Evolution): Species 1 = {:.2f}, Species 2 = {:.2f}".for
 # Phase-3 CONCLUDED
 # -----------------------------------------------------------------------
 # -----------------------------------------------------------------------
+
+
+
+# -----------------------------------------------------------------------
+# Phase-4: Approximation Methods - Euler's Method and RK4 Method
+# -----------------------------------------------------------------------
+# Step-1: Define the Euler's method function
+# Step-2: Implement the Euler's method for the Lotka-Volterra equations with step size h=0.5
+# Step-3: Implement the Euler's method for the Lotka-Volterra equations with step size h=0.25
+# Step-4: Plot the results of Euler's methods vs IVP solution
+# Step-5: Compute RMSE and MAE for Euler's method
+# Step-6: Define the RK4 method function
+# Step-7: Implement the RK4 method for the Lotka-Volterra equations with step size h=0.5
+# Step-8: Implement the RK4 method for the Lotka-Volterra equations with step size h=0.25
+# Step-9: Plot the results of RK4 methods vs IVP solution
+# Step-10: Compute RMSE and MAE for RK4 method
+# Step-11: Comparision of all three methods
+# -----------------------------------------------------------------------
+
+
+# Step 1: Define the Euler's method function
+# ---------------------------------------------------------
+def euler_method(f, t_span, z0, h, params):
+    t0, tf = t_span
+    t_values = np.arange(t0, tf + h, h)
+    z_values = np.zeros((len(t_values), len(z0)))
+    z_values[0] = z0
+    
+    for i in range(1, len(t_values)):
+        z_values[i] = z_values[i-1] + h * np.array(f(t_values[i-1], z_values[i-1], *params))
+
+    return t_values, z_values
+
+
+# Step 2: Implement the Euler's method for the Lotka-Volterra equations with step size h=0.5
+# ---------------------------------------------------------
+h1 = 0.5  # step size h1 for Euler method
+euler_t, euler_sol = euler_method(lotka_volterra, (t_data[0], t_data[-1]), [x_data[0], y_data[0]], h1, result_global.x)
+
+
+# Step-3: Implement the Euler's method for the Lotka-Volterra equations with step size h=0.25
+# ---------------------------------------------------------
+h2 = 0.25  # step size h2 for Euler method
+alt_euler_t, alt_euler_sol = euler_method(lotka_volterra, (t_data[0], t_data[-1]), [x_data[0], y_data[0]], h2, result_global.x)
+
+
+# Step 4: Plot the results of Euler's methods vs IVP solution
+# ---------------------------------------------------------
+plt.figure(figsize=(10, 6))
+plt.plot(t_data, x_data, 'o', label='Observed Species 1')
+plt.plot(t_data, y_data, 's', label='Observed Species 2')
+plt.plot(euler_t, euler_sol[:, 0], '--', label='Euler (h=0.50) Species 1')
+plt.plot(euler_t, euler_sol[:, 1], '--', label='Euler (h=0.50) Species 2')
+plt.plot(alt_euler_t, alt_euler_sol[:, 0], ':', label='Euler (h=0.25) Species 1')
+plt.plot(alt_euler_t, alt_euler_sol[:, 1], ':', label='Euler (h=0.25) Species 2')
+
+simulate_and_plot(result_local.x, 'L-BFGS-B Fit')
+simulate_and_plot(result_global.x, 'DE Fit')
+
+plt.title("Euler's Method Simulation with Two Step Sizes vs Real Data")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("euler_method_comparison.png")
+plt.show()
+
+
+# Step 5: Compute the RMSE and MAE for Euler's method
+# ---------------------------------------------------------
+# Interpolate Euler predictions to match observed time points
+interp_euler_x = np.interp(t_data, euler_t, euler_sol[:, 0])
+interp_euler_y = np.interp(t_data, euler_t, euler_sol[:, 1])
+interp_alt_x = np.interp(t_data, alt_euler_t, alt_euler_sol[:, 0])
+interp_alt_y = np.interp(t_data, alt_euler_t, alt_euler_sol[:, 1])
+
+# Compute RMSE
+rmse_euler_h1_x = np.sqrt(np.mean((x_data - interp_euler_x) ** 2))
+rmse_euler_h1_y = np.sqrt(np.mean((y_data - interp_euler_y) ** 2))
+rmse_euler_h2_x = np.sqrt(np.mean((x_data - interp_alt_x) ** 2))
+rmse_euler_h2_y = np.sqrt(np.mean((y_data - interp_alt_y) ** 2))
+
+# Compute MAE
+mae_euler_h1_x = np.mean(np.abs(x_data - interp_euler_x))
+mae_euler_h1_y = np.mean(np.abs(y_data - interp_euler_y))
+mae_euler_h2_x = np.mean(np.abs(x_data - interp_alt_x))
+mae_euler_h2_y = np.mean(np.abs(y_data - interp_alt_y))
+
+print("RMSE (Euler h1=0.5): Species 1 = {:.2f}, Species 2 = {:.2f}".format(rmse_euler_h1_x, rmse_euler_h1_y))
+print("RMSE (Euler h2=0.25): Species 1 = {:.2f}, Species 2 = {:.2f}".format(rmse_euler_h2_x, rmse_euler_h2_y))
+print("MAE (Euler h1=0.5): Species 1 = {:.2f}, Species 2 = {:.2f}".format(mae_euler_h1_x, mae_euler_h1_y))
+print("MAE (Euler h2=0.25): Species 1 = {:.2f}, Species 2 = {:.2f}".format(mae_euler_h2_x, mae_euler_h2_y))
+
+
+# Step 6: Define the RK4 method function
+# ---------------------------------------------------------
 
 
 
