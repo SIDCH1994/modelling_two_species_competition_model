@@ -309,6 +309,161 @@ print("MAE (Euler h2=0.25): Species 1 = {:.2f}, Species 2 = {:.2f}".format(mae_e
 
 # Step 6: Define the RK4 method function
 # ---------------------------------------------------------
+def rk4_method(f, t_span, z0, h, params):
+    t0, tf = t_span
+    t_values = np.arange(t0, tf + h, h)
+    z_values = np.zeros((len(t_values), len(z0)))
+    z_values[0] = z0
+
+    for i in range(1, len(t_values)):
+        t = t_values[i - 1]
+        z = z_values[i - 1]
+
+        k1 = np.array(f(t, z, *params))
+        k2 = np.array(f(t + h / 2, z + h * k1 / 2, *params))
+        k3 = np.array(f(t + h / 2, z + h * k2 / 2, *params))
+        k4 = np.array(f(t + h, z + h * k3, *params))
+
+        z_values[i] = z + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+    return t_values, z_values
+
+
+# Step 7: Implement the RK4 method for the Lotka-Volterra equations with step size h=0.5
+# ---------------------------------------------------------
+rk4_t1, rk4_sol1 = rk4_method(lotka_volterra, (t_data[0], t_data[-1]), [x_data[0], y_data[0]], h1, result_global.x)
+
+
+# Step 8: Implement the RK4 method for the Lotka-Volterra equations with step size h=0.25
+# ---------------------------------------------------------
+rk4_t2, rk4_sol2 = rk4_method(lotka_volterra, (t_data[0], t_data[-1]), [x_data[0], y_data[0]], h2, result_global.x)
+
+
+# Step 9: Plot the results of RK4 methods vs IVP solution
+# ---------------------------------------------------------
+plt.figure(figsize=(10, 6))
+plt.plot(t_data, x_data, 'o', label='Observed Species 1')
+plt.plot(t_data, y_data, 's', label='Observed Species 2')
+plt.plot(rk4_t1, rk4_sol1[:, 0], '--', label='RK4 (h=0.50) Species 1')
+plt.plot(rk4_t1, rk4_sol1[:, 1], '--', label='RK4 (h=0.50) Species 2')
+plt.plot(rk4_t2, rk4_sol2[:, 0], ':', label='RK4 (h=0.25) Species 1')
+plt.plot(rk4_t2, rk4_sol2[:, 1], ':', label='RK4 (h=0.25) Species 2')
+simulate_and_plot(result_global.x, 'solve_ivp')
+
+plt.title("RK4 Method Simulation with Two Step Sizes vs Real Data")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("rk4_method_comparison.png")
+plt.show()
+
+
+# Step 10: Compute RMSE and MAE for RK4 method
+# ---------------------------------------------------------
+interp_rk4_h1_x = np.interp(t_data, rk4_t1, rk4_sol1[:, 0])
+interp_rk4_h1_y = np.interp(t_data, rk4_t1, rk4_sol1[:, 1])
+interp_rk4_h2_x = np.interp(t_data, rk4_t2, rk4_sol2[:, 0])
+interp_rk4_h2_y = np.interp(t_data, rk4_t2, rk4_sol2[:, 1])
+
+rmse_rk4_h1_x = np.sqrt(np.mean((x_data - interp_rk4_h1_x) ** 2))
+rmse_rk4_h1_y = np.sqrt(np.mean((y_data - interp_rk4_h1_y) ** 2))
+rmse_rk4_h2_x = np.sqrt(np.mean((x_data - interp_rk4_h2_x) ** 2))
+rmse_rk4_h2_y = np.sqrt(np.mean((y_data - interp_rk4_h2_y) ** 2))
+
+mae_rk4_h1_x = np.mean(np.abs(x_data - interp_rk4_h1_x))
+mae_rk4_h1_y = np.mean(np.abs(y_data - interp_rk4_h1_y))
+mae_rk4_h2_x = np.mean(np.abs(x_data - interp_rk4_h2_x))
+mae_rk4_h2_y = np.mean(np.abs(y_data - interp_rk4_h2_y))
+
+print("RMSE (RK4 h1=0.5): Species 1 = {:.2f}, Species 2 = {:.2f}".format(rmse_rk4_h1_x, rmse_rk4_h1_y))
+print("RMSE (RK4 h2=0.25): Species 1 = {:.2f}, Species 2 = {:.2f}".format(rmse_rk4_h2_x, rmse_rk4_h2_y))
+print("MAE (RK4 h1=0.5): Species 1 = {:.2f}, Species 2 = {:.2f}".format(mae_rk4_h1_x, mae_rk4_h1_y))
+print("MAE (RK4 h2=0.25): Species 1 = {:.2f}, Species 2 = {:.2f}".format(mae_rk4_h2_x, mae_rk4_h2_y))
+
+
+# Step 11: Comparison of all three methods
+# ---------------------------------------------------------
+# Plot for step size h = 0.5
+plt.figure(figsize=(10, 6))
+plt.plot(t_data, x_data, 'o', label='Observed Species 1')
+plt.plot(t_data, y_data, 's', label='Observed Species 2')
+plt.plot(euler_t, euler_sol[:, 0], '--', label='Euler (h=0.50) Species 1')
+plt.plot(euler_t, euler_sol[:, 1], '--', label='Euler (h=0.50) Species 2')
+plt.plot(rk4_t1, rk4_sol1[:, 0], ':', label='RK4 (h=0.50) Species 1')
+plt.plot(rk4_t1, rk4_sol1[:, 1], ':', label='RK4 (h=0.50) Species 2')
+simulate_and_plot(result_global.x, 'solve_ivp')
+plt.title("Comparison of Methods (Step Size = 0.5)")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("comparison_step_0.5.png")
+plt.show()
+
+# Plot for step size h = 0.25
+plt.figure(figsize=(10, 6))
+plt.plot(t_data, x_data, 'o', label='Observed Species 1')
+plt.plot(t_data, y_data, 's', label='Observed Species 2')
+plt.plot(alt_euler_t, alt_euler_sol[:, 0], '--', label='Euler (h=0.25) Species 1')
+plt.plot(alt_euler_t, alt_euler_sol[:, 1], '--', label='Euler (h=0.25) Species 2')
+plt.plot(rk4_t2, rk4_sol2[:, 0], ':', label='RK4 (h=0.25) Species 1')
+plt.plot(rk4_t2, rk4_sol2[:, 1], ':', label='RK4 (h=0.25) Species 2')
+simulate_and_plot(result_global.x, 'solve_ivp')
+plt.title("Comparison of Methods (Step Size = 0.25)")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("comparison_step_0.25.png")
+plt.show()
+
+
+# Step 12: Summary table of RMSE and MAE for all methods
+# ---------------------------------------------------------
+summary_data = {
+    'Method': [
+        'Euler h=0.50', 'Euler h=0.25',
+        'RK4 h=0.50', 'RK4 h=0.25',
+        'solve_ivp (L-BFGS-B)', 'solve_ivp (DE)'
+    ],
+    'RMSE Species 1': [
+        rmse_euler_h1_x, rmse_euler_h2_x,
+        rmse_rk4_h1_x, rmse_rk4_h2_x,
+        rmse_local[0], rmse_global[0]
+    ],
+    'RMSE Species 2': [
+        rmse_euler_h1_y, rmse_euler_h2_y,
+        rmse_rk4_h1_y, rmse_rk4_h2_y,
+        rmse_local[1], rmse_global[1]
+    ],
+    'MAE Species 1': [
+        mae_euler_h1_x, mae_euler_h2_x,
+        mae_rk4_h1_x, mae_rk4_h2_x,
+        mae_local[0], mae_global[0]
+    ],
+    'MAE Species 2': [
+        mae_euler_h1_y, mae_euler_h2_y,
+        mae_rk4_h1_y, mae_rk4_h2_y,
+        mae_local[1], mae_global[1]
+    ]
+}
+
+summary_df = pd.DataFrame(summary_data)
+print("Summary of RMSE and MAE for All Methods:")
+print(summary_df.to_string(index=False))
+
+summary_df.to_csv("model_comparison_summary.csv", index=False)
+
+
+
+# Phase-4 CONCLUDED
+# -----------------------------------------------------------------------
+# -----------------------------------------------------------------------
+
 
 
 
