@@ -465,4 +465,155 @@ summary_df.to_csv("model_comparison_summary.csv", index=False)
 
 
 
+# ----------------------------------------------------------------------
+# Phase-5: Stability Analysis & Null clines
+# ----------------------------------------------------------------------
+# Step-1: Compute Equilibrium Points (fixed points) from LV equations
+# Step-2: Compute Jacobian matrix at equilibrium points
+# Step-3: Compute Eigenvalues of the Jacobian matrix and analyze stability
+# Step-4: Plot the nullclines and Phase plane trajectories
+# Step-5: Overlay Model Trajectories on Phase Plane
+# -----------------------------------------------------------------------
 
+
+# Step-1: Compute Equilibrium Points (fixed points) from LV equations
+# ---------------------------------------------------------
+def compute_equilibrium_points(r1, r2, K1, K2, alpha, beta):
+    # Assuming interior equilibrium exists and is stable:
+    x_star = (K1 - alpha * K2) / (1 - alpha * beta)
+    y_star = (K2 - beta * K1) / (1 - alpha * beta)
+    return x_star, y_star
+
+# Use the parameters from global optimization
+r1, r2, K1, K2, alpha, beta = result_global.x
+x_star, y_star = compute_equilibrium_points(r1, r2, K1, K2, alpha, beta)
+
+print("Equilibrium Point (Interior):")
+print("x* = {:.2f}, y* = {:.2f}".format(x_star, y_star))
+
+
+# Step-2: Compute Jacobian matrix at equilibrium points
+# ---------------------------------------------------------
+def compute_jacobian(x_star, y_star, r1, r2, K1, K2, alpha, beta):
+    df1_dx = r1 * (1 - (2 * x_star + alpha * y_star) / K1)
+    df1_dy = r1 * (-alpha * x_star / K1)
+    df2_dx = r2 * (-beta * y_star / K2)
+    df2_dy = r2 * (1 - (2 * y_star + beta * x_star) / K2)
+
+    J = np.array([[df1_dx, df1_dy],
+                  [df2_dx, df2_dy]])
+    return J
+
+jacobian_matrix = compute_jacobian(x_star, y_star, r1, r2, K1, K2, alpha, beta)
+print("Jacobian Matrix at Equilibrium:")
+print(jacobian_matrix)
+
+
+# Step-3: Compute Eigenvalues of the Jacobian matrix and analyze stability
+# ---------------------------------------------------------
+eigenvalues, _ = np.linalg.eig(jacobian_matrix)
+trace = np.trace(jacobian_matrix)
+det = np.linalg.det(jacobian_matrix)
+
+print("Eigenvalues of the Jacobian:")
+print(eigenvalues)
+
+# Eigenvalue-based analysis
+if np.all(np.real(eigenvalues) < 0):
+    print("=> Eigenvalue: The equilibrium is locally stable (attractor).")
+elif np.all(np.real(eigenvalues) > 0):
+    print("=> Eigenvalue: The equilibrium is unstable (repellor).")
+else:
+    print("=> Eigenvalue: The equilibrium is a saddle point or has mixed stability.")
+
+print("Jacobian Matrix Trace: {:.4f}".format(trace))
+print("Jacobian Matrix Determinant: {:.4f}".format(det))
+
+# Trace-Determinant analysis
+if det > 0 and trace < 0:
+    print("=> Trace-Det: The equilibrium is locally stable (attractor).")
+elif det > 0 and trace > 0:
+    print("=> Trace-Det: The equilibrium is unstable (repellor).")
+elif det < 0:
+    print("=> Trace-Det: The equilibrium is a saddle point (unstable).")
+else:
+    print("=> Trace-Det: Mixed or undefined behavior.")
+    print("=> Trace-Det: Mixed or undefined behavior.")
+
+
+# Step-4: Plot the nullclines and equilibrium points
+# ---------------------------------------------------------
+x_vals = np.linspace(0, K1 * 1.1, 300)
+y_vals = np.linspace(0, K2 * 1.1, 300)
+X, Y = np.meshgrid(x_vals, y_vals)
+
+# Compute vector field
+U = r1 * X * (1 - (X + alpha * Y) / K1)
+V = r2 * Y * (1 - (Y + beta * X) / K2)
+
+# Species 1 nullcline: dx/dt = 0 => x + alpha*y = K1 => y = (K1 - x)/alpha
+y_nullcline1 = (K1 - x_vals) / alpha
+# Species 2 nullcline: dy/dt = 0 => y + beta*x = K2 => y = K2 - beta*x
+y_nullcline2 = K2 - beta * x_vals
+
+plt.figure(figsize=(10, 6))
+plt.plot(x_vals, y_nullcline1, label='Species 1 Nullcline (dx/dt=0)')
+plt.plot(x_vals, y_nullcline2, label='Species 2 Nullcline (dy/dt=0)')
+plt.plot(x_star, y_star, 'ro', label='Equilibrium Point')
+
+# Add vector field to show phase plane flow
+plt.streamplot(X, Y, U, V, density=1.0, color='gray', arrowsize=1)
+
+plt.xlim(0, K1 * 1.05)
+plt.ylim(0, K2 * 1.05)
+plt.xlabel('Species 1 Population')
+plt.ylabel('Species 2 Population')
+plt.title('Nullclines and Phase Plane Trajectories')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.savefig("nullclines_phase_plane.png")
+plt.show()
+
+
+# Step-5: Overlay Model Trajectories on Phase Plane
+# ---------------------------------------------------------
+x_vals = np.linspace(0, K1 * 1.1, 300)
+y_vals = np.linspace(0, K2 * 1.1, 300)
+X, Y = np.meshgrid(x_vals, y_vals)
+
+# Compute vector field
+U = r1 * X * (1 - (X + alpha * Y) / K1)
+V = r2 * Y * (1 - (Y + beta * X) / K2)
+
+plt.figure(figsize=(10, 6))
+plt.streamplot(X, Y, U, V, density=1.0, color='gray', arrowsize=1)
+plt.plot(x_star, y_star, 'ro', label='Equilibrium Point')
+plt.plot(euler_sol[:, 0], euler_sol[:, 1], '--', label='Euler Trajectory (h=0.5)')
+plt.plot(rk4_sol1[:, 0], rk4_sol1[:, 1], ':', label='RK4 Trajectory (h=0.5)')
+sol_ivp_overlay = solve_ivp(lotka_volterra, (t_data[0], t_data[-1]), [x_data[0], y_data[0]],
+                             args=tuple(result_global.x), t_eval=t_data)
+plt.plot(sol_ivp_overlay.y[0], sol_ivp_overlay.y[1], '-', label='solve_ivp Trajectory')
+
+plt.xlim(0, K1 * 1.05)
+plt.ylim(0, K2 * 1.05)
+plt.xlabel('Species 1 Population')
+plt.ylabel('Species 2 Population')
+plt.title('Phase Plane with Model Trajectories')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.savefig("phase_plane_trajectories.png")
+plt.show()
+
+
+
+# Phase-5 CONCLUDED
+# -----------------------------------------------------------------------
+# -----------------------------------------------------------------------
+
+
+
+# End of the PART-1 (Diffrential equation modelling)
+# -----------------------------------------------------------------------
+# -----------------------------------------------------------------------
