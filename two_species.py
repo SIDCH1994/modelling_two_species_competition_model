@@ -455,7 +455,6 @@ summary_data = {
 summary_df = pd.DataFrame(summary_data)
 print("Summary of RMSE and MAE for All Methods:")
 print(summary_df.to_string(index=False))
-
 summary_df.to_csv("model_comparison_summary.csv", index=False)
 
 
