@@ -2,17 +2,22 @@
 # pip install matplotlib 
 # pip install numpy
 # pip install scikit-learn
+# pip install statsmodels
+# pip install torch
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
-from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, WhiteKernel
+from statsmodels.tsa.api import VAR
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from two_species_differential_equation import mixture_data, result_global, lotka_volterra, solve_ivp
 
@@ -258,7 +263,6 @@ kernel = C(10.0, (1e-2, 1e3)) * RBF(length_scale=3.0, length_scale_bounds=(0.1, 
 gpr_species1 = GaussianProcessRegressor(kernel=kernel, alpha=0.0, n_restarts_optimizer=20, normalize_y=True)
 gpr_species2 = GaussianProcessRegressor(kernel=kernel, alpha=0.0, n_restarts_optimizer=20, normalize_y=True)
 
-
 gpr_species1.fit(X, Y[:, 0])
 gpr_species2.fit(X, Y[:, 1])
 
@@ -300,7 +304,6 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("gpr_vs_lv.png")
-plt.show()
 
 # ---------------------------------------------------------------------------------
 # Phase-4 CONCLUDED
@@ -311,6 +314,141 @@ plt.show()
 # --------------------------------------------------------------------------------
 # Phase-5: Vector AutoRegressive Model (VAR)
 # --------------------------------------------------------------------------------
+# Step-1: Prepare data for VAR
+# Step-2: Fit VAR model
+# Step-3: Forecast over original time horizon
+# Step-4: Evaluation using RMSE and MAE
+# Step-5: Plot comparison with IVP model
+# ---------------------------------------------------------------------------------
+
+
+# Step-1: Prepare data for VAR
+# ------------------------------------------------------------------
+var_data = mixture_data[['Volume_Species1', 'Volume_Species2']]
+var_data.index = mixture_data['Day']
+
+
+# Step-2: Fit VAR model
+# ------------------------------------------------------------------
+var_model = VAR(var_data)
+var_result = var_model.fit(4)
+
+
+# Step-3: Forecast over original time horizon
+# ------------------------------------------------------------------
+forecast = var_result.forecast(var_data.values, steps=len(var_data))
+forecast_df = pd.DataFrame(forecast, columns=['Species1_Pred', 'Species2_Pred'])
+forecast_df.index = var_data.index
+
+
+# Step-4: Evaluation using RMSE and MAE
+# ------------------------------------------------------------------
+Y_true = var_data.values
+Y_pred = forecast_df.values
+
+rmse_var_x, rmse_var_y = compute_rmse_ml(Y_true, Y_pred)
+mae_var_x, mae_var_y = compute_mae_ml(Y_true, Y_pred)
+
+print(f"VAR RMSE (Species 1): {rmse_var_x:.2f}")
+print(f"VAR RMSE (Species 2): {rmse_var_y:.2f}")
+print(f"VAR MAE (Species 1): {mae_var_x:.2f}")
+print(f"VAR MAE (Species 2): {mae_var_y:.2f}")
+
+
+# Step-5: Plot comparison with IVP model
+# ------------------------------------------------------------------
+plt.figure(figsize=(10, 6))
+plt.plot(var_data.index, Y_true[:, 0], 'o', label='Observed Species 1')
+plt.plot(var_data.index, Y_true[:, 1], 's', label='Observed Species 2')
+plt.plot(var_data.index, Y_pred[:, 0], '--', label='VAR Species 1')
+plt.plot(var_data.index, Y_pred[:, 1], '--', label='VAR Species 2')
+plt.plot(t_data, ivp_species1, ':', label='LV solve_ivp Species 1')
+plt.plot(t_data, ivp_species2, ':', label='LV solve_ivp Species 2')
+
+plt.title("VAR Forecast vs LV Model")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("var_vs_lv.png")
+plt.show()
+
+# ---------------------------------------------------------------------------------
+# Phase-5 CONCLUDED
+# ---------------------------------------------------------------------------------
+
+
+
+# --------------------------------------------------------------------------------
+# Phase-6: kNN Regressor (Multi-output)
+# --------------------------------------------------------------------------------
+# Step-1: Prepare data
+# Step-2: Fit multi-output kNN model
+# Step-3: Evaluate predictions
+# Step-4: Plot vs LV model
+# ---------------------------------------------------------------------------------
+
+
+# Step-1: Prepare data
+# ------------------------------------------------------------------
+X = mixture_data['Day'].values.reshape(-1, 1)
+Y = mixture_data[['Volume_Species1', 'Volume_Species2']].values
+
+
+# Step-2: Fit multi-output kNN model
+# ------------------------------------------------------------------
+knn_base = KNeighborsRegressor(n_neighbors=2)  # try k=3, tweakable
+knn_model = MultiOutputRegressor(knn_base)
+knn_model.fit(X, Y)
+Y_knn_pred = knn_model.predict(X)
+
+
+# Step-3: Evaluate predictions
+# ------------------------------------------------------------------
+rmse_knn_x, rmse_knn_y = compute_rmse_ml(Y, Y_knn_pred)
+mae_knn_x, mae_knn_y = compute_mae_ml(Y, Y_knn_pred)
+
+print(f"kNN RMSE (Species 1): {rmse_knn_x:.2f}")
+print(f"kNN RMSE (Species 2): {rmse_knn_y:.2f}")
+print(f"kNN MAE (Species 1): {mae_knn_x:.2f}")
+print(f"kNN MAE (Species 2): {mae_knn_y:.2f}")
+
+
+# Step-4: Plot vs LV model
+# ------------------------------------------------------------------
+plt.figure(figsize=(10, 6))
+plt.plot(X, Y[:, 0], 'o', label='Observed Species 1')
+plt.plot(X, Y[:, 1], 's', label='Observed Species 2')
+plt.plot(X, Y_knn_pred[:, 0], '--', label='kNN Species 1')
+plt.plot(X, Y_knn_pred[:, 1], '--', label='kNN Species 2')
+plt.plot(t_data, ivp_species1, ':', label='LV solve_ivp Species 1')
+plt.plot(t_data, ivp_species2, ':', label='LV solve_ivp Species 2')
+
+plt.title("k-Nearest Neighbors vs LV Model")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("knn_vs_lv.png")
+plt.show()
+
+# ---------------------------------------------------------------------------------
+# Phase-6 CONCLUDED
+# ---------------------------------------------------------------------------------
+
+
+
+# --------------------------------------------------------------------------------
+# Phase-7: Physics-Informed Neural Network (PINN)
+# --------------------------------------------------------------------------------
+
+
+
+
+
+
 
 
 
