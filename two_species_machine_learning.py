@@ -15,7 +15,6 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, WhiteKernel
-from statsmodels.tsa.api import VAR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -29,9 +28,9 @@ from two_species_differential_equation import mixture_data, result_global, lotka
 # Phase-2: Ridge Regression
 # Phase-3: Polynomial Regression (degree ≤ 2)
 # Phase-4: Gaussian Process Regression (GPR)
-# Phase-5: Vector AutoRegressive Model (VAR)
-# Phase-6: kNN Regressor (Multi-output)
-# Phase-7: Physics-Informed Neural Network (PINN)
+# Phase-5: kNN Regressor (Multi-output)
+# Phase-6: Physics-Informed Neural Network (PINN)
+# Phase-7: Model Comparison using tables and Visulization
 # ----------------------------------------------------------------------------------------
 
 
@@ -112,7 +111,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("linear_regression_vs_lv.png")
-
+plt.show()
 
 # ---------------------------------------------------------------------------------
 # Phase-1 CONCLUDED
@@ -168,7 +167,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("ridge_regression_vs_lv.png")
-
+plt.show()
 
 # --------------------------------------------------------------------------------
 # Phase-2 CONCLUDED
@@ -221,7 +220,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("polynomial_regression_vs_lv.png")
-
+plt.show()
 
 # ---------------------------------------------------------------------------------
 # Phase-3 CONCLUDED
@@ -304,6 +303,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("gpr_vs_lv.png")
+plt.show()
 
 # ---------------------------------------------------------------------------------
 # Phase-4 CONCLUDED
@@ -312,76 +312,7 @@ plt.savefig("gpr_vs_lv.png")
 
 
 # --------------------------------------------------------------------------------
-# Phase-5: Vector AutoRegressive Model (VAR)
-# --------------------------------------------------------------------------------
-# Step-1: Prepare data for VAR
-# Step-2: Fit VAR model
-# Step-3: Forecast over original time horizon
-# Step-4: Evaluation using RMSE and MAE
-# Step-5: Plot comparison with IVP model
-# ---------------------------------------------------------------------------------
-
-
-# Step-1: Prepare data for VAR
-# ------------------------------------------------------------------
-var_data = mixture_data[['Volume_Species1', 'Volume_Species2']]
-var_data.index = mixture_data['Day']
-
-
-# Step-2: Fit VAR model
-# ------------------------------------------------------------------
-var_model = VAR(var_data)
-var_result = var_model.fit(4)
-
-
-# Step-3: Forecast over original time horizon
-# ------------------------------------------------------------------
-forecast = var_result.forecast(var_data.values, steps=len(var_data))
-forecast_df = pd.DataFrame(forecast, columns=['Species1_Pred', 'Species2_Pred'])
-forecast_df.index = var_data.index
-
-
-# Step-4: Evaluation using RMSE and MAE
-# ------------------------------------------------------------------
-Y_true = var_data.values
-Y_pred = forecast_df.values
-
-rmse_var_x, rmse_var_y = compute_rmse_ml(Y_true, Y_pred)
-mae_var_x, mae_var_y = compute_mae_ml(Y_true, Y_pred)
-
-print(f"VAR RMSE (Species 1): {rmse_var_x:.2f}")
-print(f"VAR RMSE (Species 2): {rmse_var_y:.2f}")
-print(f"VAR MAE (Species 1): {mae_var_x:.2f}")
-print(f"VAR MAE (Species 2): {mae_var_y:.2f}")
-
-
-# Step-5: Plot comparison with IVP model
-# ------------------------------------------------------------------
-plt.figure(figsize=(10, 6))
-plt.plot(var_data.index, Y_true[:, 0], 'o', label='Observed Species 1')
-plt.plot(var_data.index, Y_true[:, 1], 's', label='Observed Species 2')
-plt.plot(var_data.index, Y_pred[:, 0], '--', label='VAR Species 1')
-plt.plot(var_data.index, Y_pred[:, 1], '--', label='VAR Species 2')
-plt.plot(t_data, ivp_species1, ':', label='LV solve_ivp Species 1')
-plt.plot(t_data, ivp_species2, ':', label='LV solve_ivp Species 2')
-
-plt.title("VAR Forecast vs LV Model")
-plt.xlabel("Day")
-plt.ylabel("Population Volume")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("var_vs_lv.png")
-plt.show()
-
-# ---------------------------------------------------------------------------------
-# Phase-5 CONCLUDED
-# ---------------------------------------------------------------------------------
-
-
-
-# --------------------------------------------------------------------------------
-# Phase-6: kNN Regressor (Multi-output)
+# Phase-5: kNN Regressor (Multi-output)
 # --------------------------------------------------------------------------------
 # Step-1: Prepare data
 # Step-2: Fit multi-output kNN model
@@ -435,23 +366,190 @@ plt.savefig("knn_vs_lv.png")
 plt.show()
 
 # ---------------------------------------------------------------------------------
+# Phase-5 CONCLUDED
+# ---------------------------------------------------------------------------------
+
+
+
+# ---------------------------------------------------------------------------------
+# Phase-6: Physics-Informed Neural Network (PINN)
+# ---------------------------------------------------------------------------------
+# Step-1: Prepare data
+# Step-2: Define LV parameters (from your solve_ivp fit)
+# Step-3: Define PINN
+# Step-4: Define loss function
+# Step-5: Train model
+# Step-6: Predict and plot
+# ---------------------------------------------------------------------------------
+
+
+# Step-1: Prepare data
+# ------------------------------------------------------------------
+t = torch.tensor(mixture_data['Day'].values, dtype=torch.float32).view(-1, 1)
+species = torch.tensor(mixture_data[['Volume_Species1', 'Volume_Species2']].values, dtype=torch.float32)
+
+
+# Step-2: Lotka-Volterra parameters (fixed)
+# ------------------------------------------------------------------
+r1, r2 = 1.010, 0.828
+K1, K2 = 254.35, 146.40
+alpha, beta = 1.63, 0.24
+
+
+# Step-3: Define PINN
+# ------------------------------------------------------------------
+class PINN(nn.Module):
+    def __init__(self):
+        super(PINN, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(1, 32), nn.Softplus(),
+            nn.Linear(32, 32), nn.Softplus(),
+            nn.Linear(32, 2)
+        )
+
+    def forward(self, t):
+        return self.net(t)
+
+# Step-4: Combined loss function
+def pinn_loss(model, t, y_true):
+    t.requires_grad_(True)
+    y_pred = model(t)
+    x, y = y_pred[:, 0:1], y_pred[:, 1:2]
+
+    # Derivatives
+    dxdt = torch.autograd.grad(x, t, grad_outputs=torch.ones_like(x), create_graph=True)[0]
+    dydt = torch.autograd.grad(y, t, grad_outputs=torch.ones_like(y), create_graph=True)[0]
+
+    # Lotka-Volterra physics
+    dxdt_lv = r1 * x * (1 - (x + alpha * y) / K1)
+    dydt_lv = r2 * y * (1 - (y + beta * x) / K2)
+
+    # Loss
+    data_loss = torch.mean((x - y_true[:, 0:1])**2 + (y - y_true[:, 1:2])**2)
+    ode_loss = torch.mean((dxdt - dxdt_lv)**2 + (dydt - dydt_lv)**2)
+    total_loss = data_loss + 0.1 * ode_loss
+    return total_loss, data_loss.detach(), ode_loss.detach()
+
+# Step-5: Train model
+model = PINN()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+epochs = 5000
+
+for epoch in range(epochs):
+    loss, data_l, ode_l = pinn_loss(model, t, species)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    if epoch % 500 == 0:
+        print(f"Epoch {epoch}: Total Loss={loss.item():.2f}, Data={data_l.item():.2f}, ODE={ode_l.item():.2f}")
+
+# Step-6: Predict and Evaluate
+with torch.no_grad():
+    t_test = torch.linspace(t.min(), t.max(), 100).view(-1, 1)
+    pred_test = model(t_test).detach().numpy()
+
+    pred_obs = model(t).detach().numpy()
+    y_true = species.detach().numpy()
+
+    rmse_pinn_x = np.sqrt(mean_squared_error(y_true[:, 0], pred_obs[:, 0]))
+    rmse_pinn_y = np.sqrt(mean_squared_error(y_true[:, 1], pred_obs[:, 1]))
+    mae_pinn_x = np.mean(np.abs(y_true[:, 0] - pred_obs[:, 0]))
+    mae_pinn_y = np.mean(np.abs(y_true[:, 1] - pred_obs[:, 1]))
+
+    print("\n✅ PINN Final Evaluation:")
+    print(f"RMSE (Species 1): {rmse_pinn_x:.2f}")
+    print(f"RMSE (Species 2): {rmse_pinn_y:.2f}")
+    print(f"MAE (Species 1): {mae_pinn_x:.2f}")
+    print(f"MAE (Species 2): {mae_pinn_y:.2f}")
+
+# Step-7: Plot
+plt.figure(figsize=(10, 6))
+plt.plot(t.detach().numpy(), y_true[:, 0], 'o', label='Observed Species 1')
+plt.plot(t.detach().numpy(), y_true[:, 1], 's', label='Observed Species 2')
+plt.plot(t_test.detach().numpy(), pred_test[:, 0], '--', label='PINN Species 1')
+plt.plot(t_test.detach().numpy(), pred_test[:, 1], '--', label='PINN Species 2')
+plt.plot(t_data, ivp_species1, ':', label='LV solve_ivp Species 1')
+plt.plot(t_data, ivp_species2, ':', label='LV solve_ivp Species 2')
+
+plt.title("Physics-Informed Neural Network vs LV Model")
+plt.xlabel("Day")
+plt.ylabel("Population Volume")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("pinn_vs_lv.png")
+plt.show()
+
+# ---------------------------------------------------------------------------------
 # Phase-6 CONCLUDED
 # ---------------------------------------------------------------------------------
 
 
 
-# --------------------------------------------------------------------------------
-# Phase-7: Physics-Informed Neural Network (PINN)
-# --------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+# Phase-7: Model Comparison using tables and Visulization
+# ---------------------------------------------------------------------------------
+# Step-1: Create a DataFrame for model evaluation metrics
+# Step-2: Bar chart comparing IVP with all 6 ML models using RMSE
+# Step-3: Bar chart comparing IVP with all 6 ML models using MAE
+# ---------------------------------------------------------------------------------
+
+
+# Step-1: Create a DataFrame for model evaluation metrics
+# ------------------------------------------------------------------
+comparison_df = pd.DataFrame({
+    "Model": ["LV IVP", "Linear", "Ridge", "Polynomial", "GPR", "kNN", "PINN"],
+    "RMSE (Species 1)": [9.72, 30.73, 30.73, 16.29, 6.73, 9.43, 6.45],
+    "RMSE (Species 2)": [10.05, 23.62, 23.62, 10.45, 9.52, 9.25, 6.59],
+    "MAE (Species 1)": [8.07, 23.10, 23.10, 13.16, 5.57, 7.42, 4.82],
+    "MAE (Species 2)": [7.23, 20.78, 20.78, 8.56, 7.48, 7.90, 5.15]
+})
+
+# Bar plot parameters
+models = comparison_df["Model"].tolist()
+x = np.arange(len(models))
+width = 0.35
+
+
+# Step-2: Bar chart comparing IVP with all 6 ML models using RMSE
+# ------------------------------------------------------------------
+
+plt.figure(figsize=(12, 6))
+plt.bar(x - width/2, comparison_df["RMSE (Species 1)"], width, label='Species 1 RMSE')
+plt.bar(x + width/2, comparison_df["RMSE (Species 2)"], width, label='Species 2 RMSE')
+plt.xticks(x, models, rotation=30)
+plt.ylabel("RMSE")
+plt.title("RMSE Comparison (All Models + LV IVP)")
+plt.legend()
+plt.grid(axis='y')
+plt.tight_layout()
+plt.show()
+
+
+# Step-3: Bar chart comparing IVP with all 6 ML models using MAE
+# ------------------------------------------------------------------
+plt.figure(figsize=(12, 6))
+plt.bar(x - width/2, comparison_df["MAE (Species 1)"], width, label='Species 1 MAE')
+plt.bar(x + width/2, comparison_df["MAE (Species 2)"], width, label='Species 2 MAE')
+plt.xticks(x, models, rotation=30)
+plt.ylabel("MAE")
+plt.title("MAE Comparison (All Models + LV IVP)")
+plt.legend()
+plt.grid(axis='y')
+plt.tight_layout()
+plt.show()
+
+comparison_df.to_csv("model_comparison_table.csv", index=False)
+
+# ----------------------------------------------------------------------------------
+# Phase-7 CONCLUDED
+# ----------------------------------------------------------------------------------
 
 
 
-
-
-
-
-
-
+# ---------------------------------------------------------------------------------
+# END OF THE PART_2
+# ---------------------------------------------------------------------------------
 
 
 

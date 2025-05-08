@@ -59,7 +59,7 @@ plt.legend()
 plt.tight_layout()
 
 plt.savefig("paramecium_population_line_graph.png")
-
+plt.show()
 
 # Phase-1 CONCLUDED
 # -----------------------------------------------------------------------   
@@ -200,7 +200,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("lotka_volterra_diffrential_equations_optimization_solution.png")
-
+plt.show()
 
 
 # Step 6: Compute RMSE for both fits
@@ -290,7 +290,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("euler_method_comparison.png")
-
+plt.show()
 
 
 # Step 5: Compute the RMSE and MAE for Euler's method
@@ -369,7 +369,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("rk4_method_comparison.png")
-
+plt.show()
 
 
 # Step 10: Compute RMSE and MAE for RK4 method
@@ -413,7 +413,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("comparison_step_0.5.png")
-
+plt.show()
 
 # Plot for step size h = 0.25
 plt.figure(figsize=(10, 6))
@@ -431,7 +431,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("comparison_step_0.25.png")
-
+plt.show()
 
 
 # Step 12: Summary table of RMSE and MAE for all methods
@@ -585,7 +585,7 @@ plt.grid(True)
 plt.legend()
 plt.tight_layout()
 plt.savefig("nullclines_phase_plane.png")
-
+plt.show()
 
 
 # Step-5: Overlay Model Trajectories on Phase Plane
@@ -616,9 +616,7 @@ plt.grid(True)
 plt.legend()
 plt.tight_layout()
 plt.savefig("phase_plane_trajectories.png")
-
-
-
+plt.show()
 
 # Phase-5 CONCLUDED
 # -----------------------------------------------------------------------

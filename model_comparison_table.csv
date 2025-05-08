@@ -1,0 +1,8 @@
+Model,RMSE (Species 1),RMSE (Species 2),MAE (Species 1),MAE (Species 2)
+LV IVP,9.72,10.05,8.07,7.23
+Linear,30.73,23.62,23.1,20.78
+Ridge,30.73,23.62,23.1,20.78
+Polynomial,16.29,10.45,13.16,8.56
+GPR,6.73,9.52,5.57,7.48
+kNN,9.43,9.25,7.42,7.9
+PINN,6.45,6.59,4.82,5.15
