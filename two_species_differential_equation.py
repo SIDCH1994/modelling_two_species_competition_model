@@ -9,6 +9,17 @@ import openpyxl
 from scipy.integrate import solve_ivp
 from scipy.optimize import minimize, differential_evolution, Bounds
 
+# -----------------------------------------------------------------------
+# PART-1: Differential equation modelling
+# -----------------------------------------------------------------------   
+# Phase-1: Data preparation and visualization
+# Phase-2: Model fitting and model evaluation functions
+# Phase-3: Optimization and model fitting
+# Phase-4: Approximation Methods - Euler's Method and RK4 Method
+# Phase-5: Stability Analysis & Null clines
+# -----------------------------------------------------------------------
+
+
 
 # -----------------------------------------------------------------------
 # Phase-1: Data preparation and visualization
@@ -229,6 +240,7 @@ print("MAE (Differential Evolution): Species 1 = {:.2f}, Species 2 = {:.2f}".for
 # Step-9: Plot the results of RK4 methods vs IVP solution
 # Step-10: Compute RMSE and MAE for RK4 method
 # Step-11: Comparision of all three methods
+# Step 12: Summary table of RMSE and MAE for all methods
 # -----------------------------------------------------------------------
 
 
